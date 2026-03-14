@@ -25,6 +25,9 @@ class StateTests(unittest.TestCase):
             self.assertEqual(loaded.state, PRState.CODEX_INITIAL_REVIEWED)
             self.assertEqual(loaded.labels, ["ai-review-pending"])
             self.assertEqual(loaded.codex_issue_count, 2)
+            self.assertEqual(loaded.current_round, 0)
+            self.assertEqual(loaded.last_processed_round, 0)
+            self.assertEqual(loaded.trigger_comment_id, "")
 
 
 if __name__ == "__main__":

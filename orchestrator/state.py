@@ -29,6 +29,9 @@ class PullRequestContext:
     state: PRState = PRState.PR_OPEN
     labels: list[str] = field(default_factory=list)
     codex_issue_count: int = 0
+    current_round: int = 0
+    last_processed_round: int = 0
+    trigger_comment_id: str = ""
 
     def to_dict(self) -> dict:
         """Serialize the PR context for storage on disk."""
@@ -38,6 +41,9 @@ class PullRequestContext:
             "state": self.state.value,
             "labels": self.labels,
             "codex_issue_count": self.codex_issue_count,
+            "current_round": self.current_round,
+            "last_processed_round": self.last_processed_round,
+            "trigger_comment_id": self.trigger_comment_id,
         }
 
     @classmethod
@@ -49,6 +55,9 @@ class PullRequestContext:
             state=PRState(payload.get("state", PRState.PR_OPEN.value)),
             labels=list(payload.get("labels", [])),
             codex_issue_count=int(payload.get("codex_issue_count", 0)),
+            current_round=int(payload.get("current_round", 0)),
+            last_processed_round=int(payload.get("last_processed_round", 0)),
+            trigger_comment_id=str(payload.get("trigger_comment_id", "")),
         )
 
 

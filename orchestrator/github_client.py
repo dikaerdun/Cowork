@@ -30,10 +30,18 @@ class GitHubClient:
 
         self._run("issue", "edit", str(pr_number), "--remove-label", label)
 
-    def create_issue_comment(self, pr_number: int, body: str) -> None:
+    def create_issue_comment(self, pr_number: int, body: str) -> dict[str, Any]:
         """Post a PR comment."""
 
-        self._run("pr", "comment", str(pr_number), "--body", body)
+        result = self._run(
+            "api",
+            f"repos/{self.repository}/issues/{pr_number}/comments",
+            "--method",
+            "POST",
+            "--field",
+            f"body={body}",
+        )
+        return dict(json.loads(result.stdout))
 
     def fetch_issue_comments(self, pr_number: int) -> list[dict[str, Any]]:
         """Fetch PR issue comments for parsing."""

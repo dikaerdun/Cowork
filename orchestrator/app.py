@@ -16,19 +16,51 @@ from orchestrator.github_client import GitHubClient
 from orchestrator.state import PRState, load_context, save_context
 
 STATE_ROOT = Path(".orchestrator")
+ROUND_MARKER_PREFIX = "<!-- ai-review:"
 
 
-def trigger_codex_review(client: GitHubClient, pr_number: int) -> None:
+def _build_codex_review_comment(round_number: int, recheck: bool = False) -> str:
+    """Build the Codex trigger comment with a hidden round marker."""
+
+    body = "@codex review"
+    if recheck:
+        body = (
+            (Path(__file__).parent / "prompts" / "codex_recheck_comment.md").read_text().strip()
+        )
+    marker = f"<!-- ai-review: round={round_number}; phase={'recheck' if recheck else 'initial'} -->"
+    return f"{body}\n\n{marker}"
+
+
+def _comments_after_trigger(
+    comments: list[dict[str, Any]], trigger_comment_id: str
+) -> list[dict[str, Any]]:
+    """Return only comments posted after the current round trigger comment."""
+
+    if not trigger_comment_id:
+        return comments
+
+    for index, comment in enumerate(comments):
+        if str(comment.get("id")) == str(trigger_comment_id):
+            return comments[index + 1 :]
+
+    return comments
+
+
+def trigger_codex_review(
+    client: GitHubClient, pr_number: int, round_number: int, recheck: bool = False
+) -> dict[str, Any]:
     """Trigger a Codex review through a PR comment."""
 
     client.add_label(pr_number, "ai-review-pending")
-    client.create_issue_comment(pr_number, "@codex review")
+    return client.create_issue_comment(
+        pr_number, _build_codex_review_comment(round_number, recheck=recheck)
+    )
 
 
 def run_initial_loop(client: GitHubClient, pr_number: int) -> list[dict]:
     """Run the initial review and Claude rebuttal loop."""
 
-    trigger_codex_review(client, pr_number)
+    trigger_codex_review(client, pr_number, round_number=1)
     comments = client.fetch_issue_comments(pr_number)
     issues = parse_codex_review(comments).issues
     return ask_claude_to_reply(pr_number, issues)
@@ -71,12 +103,23 @@ def handle_pull_request_event(
 
     pr_number = _pull_request_number(payload)
     context = load_context(state_root, pr_number)
-    trigger_codex_review(client, pr_number)
+    context.current_round += 1
+    trigger_comment = trigger_codex_review(
+        client,
+        pr_number,
+        round_number=context.current_round,
+        recheck=context.current_round > 1,
+    )
     context.state = PRState.PR_OPEN
     if "ai-review-pending" not in context.labels:
         context.labels.append("ai-review-pending")
+    context.trigger_comment_id = str(trigger_comment.get("id", ""))
     save_context(state_root, context)
-    return {"action": "triggered_codex_review", "pr_number": pr_number}
+    return {
+        "action": "triggered_codex_review",
+        "pr_number": pr_number,
+        "round": context.current_round,
+    }
 
 
 def handle_issue_comment_event(
@@ -90,11 +133,23 @@ def handle_issue_comment_event(
     pr_number = _pull_request_number(payload)
     context = load_context(state_root, pr_number)
     comments = client.fetch_issue_comments(pr_number)
-    parsed = parse_codex_review(comments)
+    round_comments = _comments_after_trigger(comments, context.trigger_comment_id)
+    parsed = parse_codex_review(round_comments)
 
     if parsed.matched_comments == 0:
         save_context(state_root, context)
-        return {"action": "no_structured_codex_output", "pr_number": pr_number}
+        return {
+            "action": "no_structured_codex_output",
+            "pr_number": pr_number,
+            "round": context.current_round,
+        }
+
+    if context.last_processed_round >= context.current_round:
+        return {
+            "action": "round_already_processed",
+            "pr_number": pr_number,
+            "round": context.current_round,
+        }
 
     context.codex_issue_count = len(parsed.issues)
     context.state = (
@@ -105,23 +160,41 @@ def handle_issue_comment_event(
         replies = ask_claude_to_reply(pr_number, parsed.issues)
         client.create_issue_comment(
             pr_number,
-            "Claude scaffold reply payload:\n```json\n"
+            "Claude rebuttal response:\n```json\n"
             + json.dumps(replies, indent=2)
             + "\n```",
         )
         client.add_label(pr_number, "await-human")
         context.labels = sorted(set(context.labels + ["ai-review-pending", "await-human"]))
+        context.last_processed_round = context.current_round
+        context.current_round += 1
+        trigger_comment = trigger_codex_review(
+            client,
+            pr_number,
+            round_number=context.current_round,
+            recheck=True,
+        )
+        context.trigger_comment_id = str(trigger_comment.get("id", ""))
     else:
         client.remove_label(pr_number, "ai-review-pending")
         client.add_label(pr_number, "await-human")
         client.add_label(pr_number, "ready-to-merge")
         context.labels = sorted(set(context.labels + ["await-human", "ready-to-merge"]))
+        final_report = ask_claude_for_final_report(pr_number, parsed.issues)
+        client.create_issue_comment(
+            pr_number,
+            "Claude final dispute report:\n```json\n"
+            + json.dumps(final_report, indent=2)
+            + "\n```",
+        )
+        context.last_processed_round = context.current_round
 
     save_context(state_root, context)
     return {
         "action": "processed_codex_comment",
         "pr_number": pr_number,
         "issues": len(parsed.issues),
+        "round": context.last_processed_round,
     }
 
 

@@ -8,6 +8,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 JSON_BLOCK_RE = re.compile(r"```json\s*(.*?)```", re.DOTALL)
+CODEX_REVIEW_MARKERS = (
+    "Structured issue list:",
+    "Manual Codex-style review result",
+    "Manual Codex-style recheck result",
+)
 
 
 @dataclass
@@ -52,6 +57,8 @@ def parse_codex_review(comments: list[dict[str, Any]]) -> ParsedCodexReview:
     parsed = ParsedCodexReview()
     for comment in comments:
         body = comment.get("body", "")
+        if not any(marker in body for marker in CODEX_REVIEW_MARKERS):
+            continue
         if "```json" not in body:
             if "No findings." in body and "Structured issue list:" in body:
                 parsed.matched_comments += 1

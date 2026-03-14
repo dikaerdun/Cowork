@@ -45,6 +45,21 @@ Structured issue list:
         self.assertEqual(parsed.matched_comments, 1)
         self.assertEqual(parsed.issues, [])
 
+    def test_ignores_non_codex_json_comments(self) -> None:
+        comments = [
+            {
+                "body": """Claude rebuttal response:
+```json
+[{"issue_id":"R-001","position":"accept"}]
+```""",
+            }
+        ]
+
+        parsed = parse_codex_review(comments)
+
+        self.assertEqual(parsed.matched_comments, 0)
+        self.assertEqual(parsed.issues, [])
+
     def test_ignores_malformed_json_blocks(self) -> None:
         comments = [
             {
