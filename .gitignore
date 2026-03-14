@@ -11,3 +11,6 @@ venv/
 # Local environment files
 .env
 .env.*
+
+# Local orchestrator state
+.orchestrator/
