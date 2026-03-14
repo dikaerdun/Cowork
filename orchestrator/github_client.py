@@ -17,7 +17,9 @@ class GitHubClient:
     def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
         """Run a GitHub CLI command and return the completed process."""
 
-        cmd = ["gh", *args, "-R", self.repository]
+        cmd = ["gh", *args]
+        if args and args[0] != "api":
+            cmd.extend(["-R", self.repository])
         return subprocess.run(cmd, check=True, text=True, capture_output=True)
 
     def add_label(self, pr_number: int, label: str) -> None:
