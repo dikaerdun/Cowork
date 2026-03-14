@@ -174,3 +174,10 @@ The current worker supports two runtime modes:
    - The bridge should return JSON matching the requested schema.
 
 Bridge mode is the better fit for GitHub-hosted runners because they do not guarantee a preinstalled `claude` executable.
+
+This repository also includes a minimal bridge server:
+
+- Run `python -m orchestrator.bridge_server`
+- Default address: `http://127.0.0.1:8787/claude`
+- Optional health check: `GET /health`
+- Optional bearer auth via `CLAUDE_BRIDGE_TOKEN`

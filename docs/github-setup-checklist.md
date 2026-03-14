@@ -54,6 +54,13 @@ If using the current Claude worker on GitHub-hosted runners, add:
 - `CLAUDE_BRIDGE_TOKEN` if your bridge requires auth
 - `CLAUDE_MODEL` if you want to pin a model
 
+Suggested first bridge deployment:
+
+1. Run `python -m orchestrator.bridge_server` on a trusted machine with Claude CLI installed.
+2. Expose it only inside a private network or behind your gateway.
+3. Set `CLAUDE_BRIDGE_URL` in GitHub Actions secrets.
+4. Set `CLAUDE_BRIDGE_TOKEN` on both sides if the endpoint is reachable over a wider network.
+
 ## Safe rollout order
 
 1. Push scaffold repository.
