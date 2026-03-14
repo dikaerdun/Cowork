@@ -7,6 +7,10 @@ This repository is being prepared for a gated PR review workflow:
 3. Claude replies to each issue, patches code when needed, and prepares a final dispute report.
 4. Human reviewers make the final merge decision.
 
+Current implementation note:
+
+- The orchestrator can call Claude either through a local `claude` CLI or an HTTP bridge configured with `CLAUDE_BRIDGE_URL`.
+
 ## Phase 1: GitHub guardrails
 
 Configure these in the GitHub repository settings before enabling any automation:
@@ -151,3 +155,29 @@ Claude final report payload:
 3. Configure branch protection and labels in GitHub.
 4. Verify `@claude` and `@codex review` manually on a tiny PR.
 5. Add the orchestrator only after the manual loop is stable.
+
+## Claude execution modes
+
+The current worker supports two runtime modes:
+
+1. Local CLI mode
+   - Install `claude` on the machine or runner.
+   - Optionally set `CLAUDE_CLI_PATH` and `CLAUDE_MODEL`.
+2. HTTP bridge mode
+   - Set `CLAUDE_BRIDGE_URL`.
+   - Optionally set `CLAUDE_BRIDGE_TOKEN` and `CLAUDE_MODEL`.
+   - The bridge should accept `POST` JSON with:
+     - `task`
+     - `prompt`
+     - `schema`
+     - `model`
+   - The bridge should return JSON matching the requested schema.
+
+Bridge mode is the better fit for GitHub-hosted runners because they do not guarantee a preinstalled `claude` executable.
+
+This repository also includes a minimal bridge server:
+
+- Run `python -m orchestrator.bridge_server`
+- Default address: `http://127.0.0.1:8787/claude`
+- Optional health check: `GET /health`
+- Optional bearer auth via `CLAUDE_BRIDGE_TOKEN`

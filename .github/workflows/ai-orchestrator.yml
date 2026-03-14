@@ -37,34 +37,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Explain scaffold mode
-        run: |
-          cat <<'EOF'
-          The orchestrator workflow is currently in scaffold mode.
-
-          Intended behavior:
-          - On PR open/update: add ai-review-pending and request @codex review
-          - On Codex completion: parse issues and hand them to Claude
-          - On second pass: collect unresolved issues and prepare human dispute report
-
-          Still required before activation:
-          - Choose the Codex trigger path (GitHub integration, app, or API-backed bot)
-          - Choose the Claude path (GitHub app, Action, SDK worker, or bot token)
-          - Add the required secrets or app installation credentials
-          - Replace placeholder steps with calls into orchestrator/app.py
-          EOF
-
-      - name: Capture event context
+      - name: Run orchestrator
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          ACTION_NAME: ${{ github.event.action || 'n/a' }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || 'n/a' }}
-        run: |
-          echo "event=${EVENT_NAME}"
-          echo "action=${ACTION_NAME}"
-          echo "pr=${PR_NUMBER}"
-
-      - name: Placeholder gate for future implementation
-        run: |
-          echo "No external AI action is being triggered yet."
-          echo "This workflow is safe to merge before secrets and apps are configured."
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          CLAUDE_BRIDGE_URL: ${{ secrets.CLAUDE_BRIDGE_URL }}
+          CLAUDE_BRIDGE_TOKEN: ${{ secrets.CLAUDE_BRIDGE_TOKEN }}
+          CLAUDE_MODEL: ${{ secrets.CLAUDE_MODEL }}
+        run: python -m orchestrator
