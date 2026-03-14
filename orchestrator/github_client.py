@@ -40,7 +40,7 @@ class GitHubClient:
             f"repos/{self.repository}/issues/{pr_number}/comments",
             "--method",
             "POST",
-            "--field",
+            "--raw-field",
             f"body={body}",
         )
         return dict(json.loads(result.stdout))
