@@ -8,6 +8,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+from urllib import error, request
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
 
@@ -24,7 +25,13 @@ def _claude_command() -> str:
     return os.environ.get("CLAUDE_CLI_PATH", "claude")
 
 
-def _run_claude(prompt: str, schema: dict[str, Any]) -> Any:
+def _claude_bridge_url() -> str:
+    """Return the configured Claude bridge URL, if any."""
+
+    return os.environ.get("CLAUDE_BRIDGE_URL", "").strip()
+
+
+def _run_claude_cli(prompt: str, schema: dict[str, Any]) -> Any:
     """Run Claude CLI and parse the JSON-only response."""
 
     command = _claude_command()
@@ -50,6 +57,52 @@ def _run_claude(prompt: str, schema: dict[str, Any]) -> Any:
 
     result = subprocess.run(args, check=True, text=True, capture_output=True)
     return json.loads(result.stdout)
+
+
+def _run_claude_bridge(prompt: str, schema: dict[str, Any], task: str) -> Any:
+    """Call a configured HTTP bridge that proxies requests to Claude."""
+
+    bridge_url = _claude_bridge_url()
+    if not bridge_url:
+        raise RuntimeError("Claude bridge URL not configured.")
+
+    payload = {
+        "task": task,
+        "prompt": prompt,
+        "schema": schema,
+        "model": os.environ.get("CLAUDE_MODEL", ""),
+    }
+    body = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+
+    bridge_token = os.environ.get("CLAUDE_BRIDGE_TOKEN", "").strip()
+    if bridge_token:
+        headers["Authorization"] = f"Bearer {bridge_token}"
+
+    req = request.Request(bridge_url, data=body, headers=headers, method="POST")
+    try:
+        with request.urlopen(req, timeout=60) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except error.HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Claude bridge request failed: {exc.code} {details}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Claude bridge request failed: {exc.reason}") from exc
+
+
+def _run_claude(prompt: str, schema: dict[str, Any], task: str) -> Any:
+    """Run Claude through CLI first, then fall back to an HTTP bridge."""
+
+    command = _claude_command()
+    if shutil.which(command) is not None:
+        return _run_claude_cli(prompt, schema)
+
+    if _claude_bridge_url():
+        return _run_claude_bridge(prompt, schema, task)
+
+    raise RuntimeError(
+        "Claude execution is not configured. Install Claude CLI or set CLAUDE_BRIDGE_URL."
+    )
 
 
 def ask_claude_to_reply(pr_number: int, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -88,7 +141,7 @@ def ask_claude_to_reply(pr_number: int, issues: list[dict[str, Any]]) -> list[di
             "additionalProperties": False,
         },
     }
-    return list(_run_claude(prompt, schema))
+    return list(_run_claude(prompt, schema, task="rebuttal"))
 
 
 def ask_claude_for_final_report(
@@ -124,4 +177,4 @@ def ask_claude_for_final_report(
         ],
         "additionalProperties": False,
     }
-    return dict(_run_claude(prompt, schema))
+    return dict(_run_claude(prompt, schema, task="final_report"))

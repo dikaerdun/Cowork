@@ -48,6 +48,12 @@ Likely future requirements:
 - Any OpenAI credentials if using API-backed Codex flows
 - OpenClaw gateway credentials only after the GitHub-only loop is stable
 
+If using the current Claude worker on GitHub-hosted runners, add:
+
+- `CLAUDE_BRIDGE_URL`
+- `CLAUDE_BRIDGE_TOKEN` if your bridge requires auth
+- `CLAUDE_MODEL` if you want to pin a model
+
 ## Safe rollout order
 
 1. Push scaffold repository.

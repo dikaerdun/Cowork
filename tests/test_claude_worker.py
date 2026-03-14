@@ -7,7 +7,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from orchestrator.claude_worker import ask_claude_for_final_report, ask_claude_to_reply
+from orchestrator.claude_worker import (
+    _run_claude,
+    ask_claude_for_final_report,
+    ask_claude_to_reply,
+)
 
 
 class ClaudeWorkerTests(unittest.TestCase):
@@ -44,6 +48,39 @@ class ClaudeWorkerTests(unittest.TestCase):
 
         self.assertEqual(report["pr"], 2)
         self.assertEqual(report["disputed"], 0)
+
+    def test_bridge_reply_path_uses_configured_url(self) -> None:
+        class FakeResponse:
+            def __enter__(self) -> "FakeResponse":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> None:
+                return None
+
+            def read(self) -> bytes:
+                return (
+                    b'[{"issue_id":"R-1","position":"accept","reason":"ok","action":"patched",'
+                    b'"patch_commit":"abc","tests_added":["t"],"residual_risk":"low"}]'
+                )
+
+        env = os.environ.copy()
+        env["CLAUDE_BRIDGE_URL"] = "https://bridge.example/claude"
+        with patch.dict(os.environ, env, clear=True), patch(
+            "orchestrator.claude_worker.shutil.which", return_value=None
+        ), patch("orchestrator.claude_worker.request.urlopen", return_value=FakeResponse()) as mock_urlopen:
+            replies = ask_claude_to_reply(4, [{"issue_id": "R-1"}])
+
+        self.assertEqual(replies[0]["issue_id"], "R-1")
+        self.assertTrue(mock_urlopen.called)
+
+    def test_missing_cli_and_bridge_raises_clear_error(self) -> None:
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "orchestrator.claude_worker.shutil.which", return_value=None
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                _run_claude("prompt", {"type": "object"}, task="rebuttal")
+
+        self.assertIn("CLAUDE_BRIDGE_URL", str(ctx.exception))
 
 
 if __name__ == "__main__":

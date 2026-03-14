@@ -42,4 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
+          CLAUDE_BRIDGE_URL: ${{ secrets.CLAUDE_BRIDGE_URL }}
+          CLAUDE_BRIDGE_TOKEN: ${{ secrets.CLAUDE_BRIDGE_TOKEN }}
+          CLAUDE_MODEL: ${{ secrets.CLAUDE_MODEL }}
         run: python -m orchestrator
