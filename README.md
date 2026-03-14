@@ -21,3 +21,19 @@ bash scripts/run_local_demo.sh
 
 This starts the local Claude bridge on an ephemeral port, sends a sample Codex issue
 through the bridge-backed Claude worker, and prints the reply plus final report.
+
+## Local Web UI
+
+Run the local UI with:
+
+```bash
+bash scripts/run_local_ui.sh
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8080
+```
+
+Paste or edit an issue JSON payload, switch presets, inspect worker status, then click `Run Demo`.
