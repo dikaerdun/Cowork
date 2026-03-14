@@ -59,7 +59,10 @@ def parse_codex_review(comments: list[dict[str, Any]]) -> ParsedCodexReview:
 
         parsed.matched_comments += 1
         for block in JSON_BLOCK_RE.findall(body):
-            payload = json.loads(block)
+            try:
+                payload = json.loads(block)
+            except json.JSONDecodeError:
+                continue
             if isinstance(payload, dict):
                 issue = _normalize_issue(payload)
                 if issue is not None:

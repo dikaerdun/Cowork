@@ -45,6 +45,38 @@ Structured issue list:
         self.assertEqual(parsed.matched_comments, 1)
         self.assertEqual(parsed.issues, [])
 
+    def test_ignores_malformed_json_blocks(self) -> None:
+        comments = [
+            {
+                "body": """Manual Codex-style review result:
+
+Structured issue list:
+```json
+{"issue_id":
+```
+```json
+[
+  {
+    "issue_id": "R-002",
+    "severity": "low",
+    "file": "orchestrator/codex_parser.py",
+    "lines": "1-5",
+    "claim": "Valid payload still parses",
+    "evidence": ["second block is well formed"],
+    "suggested_fix": "Keep parsing subsequent blocks",
+    "confidence": 0.61
+  }
+]
+```""",
+            }
+        ]
+
+        parsed = parse_codex_review(comments)
+
+        self.assertEqual(parsed.matched_comments, 1)
+        self.assertEqual(len(parsed.issues), 1)
+        self.assertEqual(parsed.issues[0]["issue_id"], "R-002")
+
 
 if __name__ == "__main__":
     unittest.main()
