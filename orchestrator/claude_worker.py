@@ -31,6 +31,12 @@ def _claude_bridge_url() -> str:
     return os.environ.get("CLAUDE_BRIDGE_URL", "").strip()
 
 
+def _execution_mode() -> str:
+    """Return the configured Claude execution mode."""
+
+    return os.environ.get("CLAUDE_EXECUTION_MODE", "auto").strip().lower()
+
+
 def _run_claude_cli(prompt: str, schema: dict[str, Any]) -> Any:
     """Run Claude CLI and parse the JSON-only response."""
 
@@ -93,7 +99,16 @@ def _run_claude_bridge(prompt: str, schema: dict[str, Any], task: str) -> Any:
 def _run_claude(prompt: str, schema: dict[str, Any], task: str) -> Any:
     """Run Claude through CLI first, then fall back to an HTTP bridge."""
 
+    mode = _execution_mode()
     command = _claude_command()
+    if mode == "cli":
+        return _run_claude_cli(prompt, schema)
+
+    if mode == "bridge":
+        if _claude_bridge_url():
+            return _run_claude_bridge(prompt, schema, task)
+        raise RuntimeError("CLAUDE_EXECUTION_MODE=bridge but CLAUDE_BRIDGE_URL is not set.")
+
     if shutil.which(command) is not None:
         return _run_claude_cli(prompt, schema)
 

@@ -82,6 +82,15 @@ class ClaudeWorkerTests(unittest.TestCase):
 
         self.assertIn("CLAUDE_BRIDGE_URL", str(ctx.exception))
 
+    def test_bridge_mode_requires_url(self) -> None:
+        with patch.dict(
+            os.environ, {"CLAUDE_EXECUTION_MODE": "bridge"}, clear=True
+        ), patch("orchestrator.claude_worker.shutil.which", return_value=None):
+            with self.assertRaises(RuntimeError) as ctx:
+                _run_claude("prompt", {"type": "object"}, task="rebuttal")
+
+        self.assertIn("CLAUDE_BRIDGE_URL", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
