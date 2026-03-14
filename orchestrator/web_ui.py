@@ -1,4 +1,4 @@
-"""Local web UI for running Claude reply and final report demos."""
+"""本地 Web 工作台，用于运行 Claude 回复与总结演示。"""
 
 from __future__ import annotations
 
@@ -20,20 +20,20 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS_DIR = ROOT / "contracts"
 RECENT_RUN: dict[str, Any] = {
     "status": "idle",
-    "message": "No run yet.",
+    "message": "尚未运行。",
     "reply": None,
     "report": None,
 }
 
 
 def _load_default_issue() -> str:
-    """Return the default issue JSON shown in the UI."""
+    """返回页面默认展示的问题 JSON。"""
 
     return (CONTRACTS_DIR / "codex_issue.example.json").read_text()
 
 
 def _preset_payloads() -> dict[str, dict[str, Any]]:
-    """Return named issue presets for the UI."""
+    """返回界面可切换的预设模板。"""
 
     payloads = {
         "default": json.loads((CONTRACTS_DIR / "codex_issue.example.json").read_text()),
@@ -46,7 +46,7 @@ def _preset_payloads() -> dict[str, dict[str, Any]]:
 
 
 def _worker_status() -> dict[str, Any]:
-    """Return a lightweight environment status snapshot."""
+    """返回轻量级运行环境状态。"""
 
     return {
         "claude_cli_found": bool(shutil.which(os.environ.get("CLAUDE_CLI_PATH", "claude"))),
@@ -59,7 +59,7 @@ def _worker_status() -> dict[str, Any]:
 
 @contextmanager
 def temporary_env(**updates: str) -> Iterator[None]:
-    """Temporarily set environment variables."""
+    """临时设置环境变量。"""
 
     previous = {key: os.environ.get(key) for key in updates}
     try:
@@ -76,7 +76,7 @@ def temporary_env(**updates: str) -> Iterator[None]:
 
 @contextmanager
 def running_bridge_server() -> Iterator[str]:
-    """Start the local bridge server on an ephemeral port."""
+    """在临时端口启动本地 bridge 服务。"""
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), ClaudeBridgeHandler)
     thread = Thread(target=server.serve_forever, daemon=True)
@@ -91,11 +91,11 @@ def running_bridge_server() -> Iterator[str]:
 
 
 HTML_PAGE = """<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Cowork Local UI</title>
+    <title>Cowork 本地评审工作台</title>
     <style>
       :root {
         --bg: #f5f0e8;
@@ -112,7 +112,7 @@ HTML_PAGE = """<!doctype html>
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: Georgia, "Iowan Old Style", serif;
+        font-family: "PingFang SC", "Hiragino Sans GB", "Noto Serif SC", Georgia, serif;
         color: var(--ink);
         background:
           radial-gradient(circle at top left, rgba(182, 77, 45, 0.12), transparent 28%),
@@ -159,6 +159,28 @@ HTML_PAGE = """<!doctype html>
         grid-template-columns: 1.1fr 0.9fr;
         gap: 18px;
         margin-top: 18px;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .flow-step {
+        border: 1px solid var(--line);
+        background: rgba(255, 250, 243, 0.9);
+        border-radius: 18px;
+        padding: 14px 16px;
+      }
+      .flow-step strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--accent-deep);
+      }
+      .flow-step span {
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.45;
       }
       .top-grid {
         display: grid;
@@ -285,6 +307,7 @@ HTML_PAGE = """<!doctype html>
         color: var(--accent-deep);
       }
       @media (max-width: 860px) {
+        .flow,
         .top-grid,
         .grid { grid-template-columns: 1fr; }
       }
@@ -293,59 +316,77 @@ HTML_PAGE = """<!doctype html>
   <body>
     <div class="shell">
       <section class="hero">
-        <h1>Cowork Local Review UI</h1>
-        <p>Paste a Codex-style issue payload, then run a local Claude reply and final report through the same bridge-backed worker used by the repository.</p>
+        <h1>Cowork 本地评审工作台</h1>
+        <p>围绕你的业务流，这个页面把一次 AI 评审拆成可观察的 4 个阶段：Codex 提问题、Claude 回复、二轮复核、人工确认。你可以先在本地把 JSON 契约和提示词链路跑顺，再接入真实 PR。</p>
         <div class="hero-meta">
-          <div class="pill">Local-first workflow</div>
-          <div class="pill">Bridge-backed Claude calls</div>
-          <div class="pill">Structured JSON outputs</div>
+          <div class="pill">本地优先</div>
+          <div class="pill">Bridge 驱动 Claude</div>
+          <div class="pill">结构化 JSON 输出</div>
         </div>
         <div class="banner">
-          <strong>Tip:</strong> this UI is best for validating prompts, issue formats, and Claude output contracts before wiring a live PR loop.
+          <strong>建议用法：</strong>先在这里验证问题格式、回复结构和最终报告，再把同样的格式迁到真实 PR 流程里。
+        </div>
+      </section>
+      <section class="flow">
+        <div class="flow-step">
+          <strong>第 1 步：输入问题</strong>
+          <span>粘贴或加载一条 Codex 风格 issue，确认字段完整。</span>
+        </div>
+        <div class="flow-step">
+          <strong>第 2 步：运行 Claude</strong>
+          <span>通过本地 bridge 调 Claude，生成逐条回复。</span>
+        </div>
+        <div class="flow-step">
+          <strong>第 3 步：查看总结</strong>
+          <span>同时生成最终人类可读的决策报告。</span>
+        </div>
+        <div class="flow-step">
+          <strong>第 4 步：准备接 PR</strong>
+          <span>把跑顺的 JSON 契约和提示词迁回自动编排器。</span>
         </div>
       </section>
       <section class="top-grid">
         <div class="card">
-          <h2>Worker Status</h2>
+          <h2>环境状态</h2>
           <div id="worker-status" class="status-grid"></div>
         </div>
         <div class="card">
-          <h2>Recent Run</h2>
-          <div id="recent-meta" class="recent-meta">No run yet.</div>
-          <pre id="recent-output">No run yet.</pre>
+          <h2>最近一次运行</h2>
+          <div id="recent-meta" class="recent-meta">尚未运行。</div>
+          <pre id="recent-output">尚未运行。</pre>
         </div>
       </section>
       <section class="grid">
         <div class="card">
-          <h2>Issue Input</h2>
-          <label for="issue-json">Issue JSON</label>
+          <h2>问题输入</h2>
+          <label for="issue-json">问题 JSON</label>
           <textarea id="issue-json">__DEFAULT_ISSUE__</textarea>
           <div class="actions">
             <select id="preset-select">
-              <option value="default">Default Codex Issue</option>
-              <option value="reply-example">Claude Reply Example</option>
-              <option value="final-report-example">Final Report Example</option>
+              <option value="default">默认 Codex 问题</option>
+              <option value="reply-example">Claude 回复示例</option>
+              <option value="final-report-example">最终报告示例</option>
             </select>
-            <button id="apply-preset" class="ghost">Apply Preset</button>
-            <button id="run-demo">Run Demo</button>
-            <button id="reset" class="secondary">Reset Example</button>
+            <button id="apply-preset" class="ghost">加载模板</button>
+            <button id="run-demo">开始演练</button>
+            <button id="reset" class="secondary">重置示例</button>
           </div>
         </div>
         <div class="stack">
           <div class="card">
-            <h2>Reply Payload</h2>
-            <label>Reply Payload</label>
-            <pre id="reply-output">Not run yet.</pre>
+            <h2>Claude 回复</h2>
+            <label>回复结果</label>
+            <pre id="reply-output">尚未运行。</pre>
           </div>
           <div class="card">
-            <h2>Final Report</h2>
-            <label>Final Report</label>
-            <pre id="report-output">Not run yet.</pre>
+            <h2>最终报告</h2>
+            <label>人工审批摘要</label>
+            <pre id="report-output">尚未运行。</pre>
           </div>
           <div class="card">
-            <h2>Run Status</h2>
-            <label>Status</label>
-            <div id="status" class="status">Ready.</div>
+            <h2>运行状态</h2>
+            <label>当前进度</label>
+            <div id="status" class="status">就绪，可开始演练。</div>
           </div>
         </div>
       </section>
@@ -368,9 +409,9 @@ HTML_PAGE = """<!doctype html>
         const recent = payload.recent_run;
 
         workerStatusBox.innerHTML = `
-          <div class="status-row"><div class="metric"><strong>Claude CLI</strong>${status.claude_cli_found ? "Found" : "Missing"}</div><div>${status.execution_mode}</div></div>
-          <div class="status-row"><div class="metric"><strong>Bridge URL</strong>${status.bridge_url_configured ? "Configured" : "Not set"}</div><div>${status.bridge_token_configured ? "Token set" : "No token"}</div></div>
-          <div class="status-row"><div class="metric"><strong>Model</strong>${status.claude_model || "Default"}</div><div>Mode: ${status.execution_mode}</div></div>
+          <div class="status-row"><div class="metric"><strong>Claude CLI</strong>${status.claude_cli_found ? "已发现" : "未发现"}</div><div>${status.execution_mode}</div></div>
+          <div class="status-row"><div class="metric"><strong>Bridge 地址</strong>${status.bridge_url_configured ? "已配置" : "未配置"}</div><div>${status.bridge_token_configured ? "已设置令牌" : "未设置令牌"}</div></div>
+          <div class="status-row"><div class="metric"><strong>模型</strong>${status.claude_model || "默认模型"}</div><div>执行模式：${status.execution_mode}</div></div>
         `;
 
         recentMetaBox.textContent = recent.message;
@@ -381,20 +422,20 @@ HTML_PAGE = """<!doctype html>
         const response = await fetch(`/api/presets/${presetSelect.value}`);
         const payload = await response.json();
         issueBox.value = JSON.stringify(payload, null, 2);
-        statusBox.textContent = `Loaded preset: ${presetSelect.value}`;
+        statusBox.textContent = `已加载模板：${presetSelect.options[presetSelect.selectedIndex].text}`;
       }
 
       document.getElementById("reset").addEventListener("click", () => {
         issueBox.value = defaultIssue;
-        statusBox.textContent = "Reset to example issue.";
+        statusBox.textContent = "已重置为默认问题示例。";
       });
 
       document.getElementById("apply-preset").addEventListener("click", applyPreset);
 
       document.getElementById("run-demo").addEventListener("click", async () => {
-        statusBox.textContent = "Running local Claude flow...";
-        replyBox.textContent = "Working...";
-        reportBox.textContent = "Working...";
+        statusBox.textContent = "正在通过本地 bridge 调用 Claude...";
+        replyBox.textContent = "处理中...";
+        reportBox.textContent = "处理中...";
         try {
           const response = await fetch("/api/run-demo", {
             method: "POST",
@@ -407,11 +448,11 @@ HTML_PAGE = """<!doctype html>
           }
           replyBox.textContent = JSON.stringify(payload.reply, null, 2);
           reportBox.textContent = JSON.stringify(payload.report, null, 2);
-          statusBox.textContent = "Completed.";
+          statusBox.textContent = "演练完成，可以继续调整问题格式或提示词。";
           await loadStatus();
         } catch (error) {
-          replyBox.textContent = "Error";
-          reportBox.textContent = "Error";
+          replyBox.textContent = "发生错误";
+          reportBox.textContent = "发生错误";
           statusBox.textContent = error.message;
         }
       });
@@ -424,7 +465,7 @@ HTML_PAGE = """<!doctype html>
 
 
 class LocalUIHandler(BaseHTTPRequestHandler):
-    """Serve the local HTML UI and demo API."""
+    """提供本地 HTML 工作台和演练 API。"""
 
     server_version = "CoworkLocalUI/0.1"
 
@@ -488,7 +529,7 @@ class LocalUIHandler(BaseHTTPRequestHandler):
             RECENT_RUN.update(
                 {
                     "status": "success",
-                    "message": "Last run completed successfully.",
+                    "message": "上一次运行已成功完成。",
                     "reply": reply,
                     "report": report,
                 }
@@ -522,12 +563,12 @@ class LocalUIHandler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    """Run the local web UI server."""
+    """启动本地 Web 工作台。"""
 
     host = os.environ.get("COWORK_UI_HOST", "127.0.0.1")
     port = int(os.environ.get("COWORK_UI_PORT", "8080"))
     server = ThreadingHTTPServer((host, port), LocalUIHandler)
-    print(f"Cowork Local UI available at http://{host}:{port}")
+    print(f"Cowork 本地评审工作台已启动：http://{host}:{port}")
     server.serve_forever()
     return 0
 

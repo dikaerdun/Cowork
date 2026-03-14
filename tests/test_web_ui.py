@@ -32,7 +32,7 @@ class _TestHandler(LocalUIHandler):
 class WebUITests(unittest.TestCase):
     def setUp(self) -> None:
         RECENT_RUN.update(
-            {"status": "idle", "message": "No run yet.", "reply": None, "report": None}
+            {"status": "idle", "message": "尚未运行。", "reply": None, "report": None}
         )
 
     def test_root_serves_html(self) -> None:
@@ -41,7 +41,7 @@ class WebUITests(unittest.TestCase):
         handler.do_GET()
 
         self.assertIn(("status", 200), handler.responses)
-        self.assertIn(b"Cowork Local Review UI", handler.wfile.getvalue())
+        self.assertIn("Cowork 本地评审工作台".encode("utf-8"), handler.wfile.getvalue())
 
     def test_api_run_demo_returns_reply_and_report(self) -> None:
         body = json.dumps({"issue": {"issue_id": "R-1"}}).encode("utf-8")
