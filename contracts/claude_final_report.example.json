@@ -1,0 +1,16 @@
+{
+  "pr": 128,
+  "agreed": 5,
+  "partial": 1,
+  "disputed": 1,
+  "disputes": [
+    {
+      "issue_id": "R-004",
+      "topic": "auth boundary enforcement",
+      "codex_position": "still risky",
+      "claude_position": "enforced upstream",
+      "human_decision_needed": "whether to duplicate enforcement in app layer"
+    }
+  ],
+  "merge_recommendation": "blocked"
+}

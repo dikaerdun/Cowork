@@ -1,0 +1,7 @@
+# Default reviewers
+*                       @your-team
+
+# Domain owners
+/backend/**             @backend-owner
+/mobile/**              @mobile-owner
+/security/**            @security-owner

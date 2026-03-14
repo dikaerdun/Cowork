@@ -1,0 +1,70 @@
+name: AI Orchestrator
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  issue_comment:
+    types:
+      - created
+  pull_request_review:
+    types:
+      - submitted
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-orchestrator-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  orchestrate:
+    name: Route AI review events
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Explain scaffold mode
+        run: |
+          cat <<'EOF'
+          The orchestrator workflow is currently in scaffold mode.
+
+          Intended behavior:
+          - On PR open/update: add ai-review-pending and request @codex review
+          - On Codex completion: parse issues and hand them to Claude
+          - On second pass: collect unresolved issues and prepare human dispute report
+
+          Still required before activation:
+          - Choose the Codex trigger path (GitHub integration, app, or API-backed bot)
+          - Choose the Claude path (GitHub app, Action, SDK worker, or bot token)
+          - Add the required secrets or app installation credentials
+          - Replace placeholder steps with calls into orchestrator/app.py
+          EOF
+
+      - name: Capture event context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ACTION_NAME: ${{ github.event.action || 'n/a' }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || 'n/a' }}
+        run: |
+          echo "event=${EVENT_NAME}"
+          echo "action=${ACTION_NAME}"
+          echo "pr=${PR_NUMBER}"
+
+      - name: Placeholder gate for future implementation
+        run: |
+          echo "No external AI action is being triggered yet."
+          echo "This workflow is safe to merge before secrets and apps are configured."

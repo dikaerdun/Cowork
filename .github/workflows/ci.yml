@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-orchestrator-scaffold:
+    name: Validate orchestrator scaffold
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile Python sources
+        run: python -m compileall orchestrator
+
+      - name: Validate example JSON contracts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in Path("contracts").glob("*.json"):
+              with path.open() as f:
+                  json.load(f)
+          print("JSON contracts are valid.")
+          PY

@@ -1,0 +1,13 @@
+{
+  "issue_id": "R-004",
+  "severity": "high",
+  "file": "src/auth/session.ts",
+  "lines": "81-97",
+  "claim": "refresh endpoint can bypass session check",
+  "evidence": [
+    "missing middleware",
+    "no negative test"
+  ],
+  "suggested_fix": "wrap route and add regression test",
+  "confidence": 0.86
+}

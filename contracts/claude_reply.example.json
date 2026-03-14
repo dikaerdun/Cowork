@@ -1,0 +1,11 @@
+{
+  "issue_id": "R-004",
+  "position": "accept",
+  "reason": "Codex claim is valid",
+  "action": "patched",
+  "patch_commit": "abc1234",
+  "tests_added": [
+    "auth_refresh_rejects_without_session"
+  ],
+  "residual_risk": "low"
+}
