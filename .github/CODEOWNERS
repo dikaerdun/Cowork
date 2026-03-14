@@ -1,7 +1,7 @@
 # Default reviewers
-*                       @your-team
+*                       @dikaerdun
 
 # Domain owners
-/backend/**             @backend-owner
-/mobile/**              @mobile-owner
-/security/**            @security-owner
+/backend/**             @dikaerdun
+/mobile/**              @dikaerdun
+/security/**            @dikaerdun
