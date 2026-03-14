@@ -3,6 +3,8 @@
 import io
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional
 from unittest.mock import patch
 
@@ -80,3 +82,32 @@ class WebUITests(unittest.TestCase):
 
         self.assertIn(("status", 200), handler.responses)
         self.assertIn(b'"issue_id": "R-004"', handler.wfile.getvalue())
+
+    def test_save_template_persists_payload(self) -> None:
+        body = json.dumps({"name": "我的模板", "issue": {"issue_id": "R-9"}}).encode("utf-8")
+        handler = _TestHandler("/api/templates", body, {"Content-Length": str(len(body))})
+
+        with TemporaryDirectory() as tmp, patch(
+            "orchestrator.web_ui.TEMPLATES_PATH", Path(tmp) / "ui_templates.json"
+        ), patch("orchestrator.web_ui.STATE_DIR", Path(tmp)):
+            handler.do_POST()
+
+            saved = json.loads((Path(tmp) / "ui_templates.json").read_text())
+
+        self.assertIn(("status", 200), handler.responses)
+        self.assertEqual(saved["我的模板"]["issue_id"], "R-9")
+
+    def test_import_pr_returns_parsed_issues(self) -> None:
+        body = json.dumps(
+            {"repository": "dikaerdun/Cowork", "pr": "2"}
+        ).encode("utf-8")
+        handler = _TestHandler("/api/import-pr", body, {"Content-Length": str(len(body))})
+
+        with patch(
+            "orchestrator.web_ui._import_pr_issues",
+            return_value={"repository": "dikaerdun/Cowork", "pr_number": 2, "issues": [{"issue_id": "R-1"}], "matched_comments": 1, "comment_count": 3},
+        ):
+            handler.do_POST()
+
+        self.assertIn(("status", 200), handler.responses)
+        self.assertIn(b'"issue_id": "R-1"', handler.wfile.getvalue())
